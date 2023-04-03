@@ -1,96 +1,172 @@
-# Virtual Psychologist Streamlit Chat Application based on ChatGPT
+# Virtual Psychologist Streamlit Chat Application based on Fine Tuned ChatGPT
 
-This Streamlit application allows users to have a conversation with a virtual psychologist powered by the OpenAI ChatGPT model. The user can enter their message in the text input field and the ChatGPT model will generate a response. This project includes a Streamlit-based chatbot operationalized in AWS using AWS ECS Fargate.
+This Streamlit application allows users to have a conversation with a virtual psychologist powered by our fine tuned OpenAI ChatGPT model. Users can enter their message in the text input field and the ChatGPT model will generate a response. 
 
 ## Table of Contents
 
-- [Virtual Psychologist Streamlit Chat Application based on ChatGPT](#virtual-psychologist-streamlit-chat-application-based-on-chatgpt)
+- [Virtual Psychologist Streamlit Chat Application based on Fine Tuned ChatGPT](#virtual-psychologist-streamlit-chat-application-based-on-fine-tuned-chatgpt)
   - [Table of Contents](#table-of-contents)
-  - [Installation](#installation)
-    - [CloudFormation Stack Deployment](#cloudformation-stack-deployment)
-      - [CloudFormation Parameters](#cloudformation-parameters)
-    - [Docker Image Build](#docker-image-build)
-    - [Docker Container Run](#docker-container-run)
-  - [Usage](#usage)
-  - [Support](#support)
-  - [Contributing](#contributing)
+  - [Set up \& Installation](#set-up--installation)
+    - [Fine tuning ChatGPT](#fine-tuning-chatgpt)
+      - [Step 0: Install openai](#step-0-install-openai)
+      - [Step 1: Preparing data for fine tuning](#step-1-preparing-data-for-fine-tuning)
+      - [Step 2: Configuring data with Open AI api](#step-2-configuring-data-with-open-ai-api)
+      - [Step 3: Fine tuning](#step-3-fine-tuning)
+    - [Hosting the model with streamlit web app](#hosting-the-model-with-streamlit-web-app)
+      - [Step 0: Install and create a virtual environment for the webapp with required dependencies](#step-0-install-and-create-a-virtual-environment-for-the-webapp-with-required-dependencies)
+      - [Step 1: Kick start the stream lit app](#step-1-kick-start-the-stream-lit-app)
 
-## Installation
+## Set up & Installation
 
-### CloudFormation Stack Deployment
+### Fine tuning ChatGPT
 
-This CloudFormation template creates a Virtual Private Cloud (VPC) with four subnets (two public and two private), an Internet Gateway, and a NAT Gateway. It also creates four route tables (one for each subnet) and routes for each route table to direct traffic to the Internet Gateway or NAT Gateway as appropriate.
+Fine-tuning allows you to customize and optimize the performance of a pre-trained language model like GPT-3 to better suit any specific purposes. In our case, it is to provide free but professional psychotherapy service.
 
-The VPC has a CIDR block of 10.0.0.0/16, and the four subnets are created with CIDR blocks of 10.0.1.0/24, 10.0.2.0/24, 10.0.3.0/24, and 10.0.4.0/24. The public subnets are mapped to have public IP addresses on launch, and the private subnets are not.
+Benefits of fine-tuning:
+* Improve the quality and relevance of its generated responses for our particular use case
+* Higher accuracy and more natural-sounding language
+* Token savings due to shorter prompts
+* Lower latency requests
 
-There are also a few parameters defined at the beginning of the template that allow the user to specify an allowed IP address range for accessing port 80 on the load balancer, the name of an Elastic Container Registry (ECR) repository, and the path to an API key in the SSM Parameter Store.
+The full script is written in python and available at the jupyter notebook titled **'Prepare data and fine tune chatgpt with depression chat data.ipynb'**. Although it uses google drive throughout the process, it is no different to run on local environment. Key steps are summarised below:
 
-To deploy the CloudFormation stack for this project, use the `./cf.yaml` file. You can do this using the AWS Management Console, the AWS CLI, or the AWS SDKs.
+#### Step 0: Install openai
 
-#### CloudFormation Parameters
+Install Open ai python module in your environment:
 
-| Parameter | Description | Default Value |
-| --- | --- | --- |
-| AllowedIP | Comma-separated list of IP addresses that should be allowed to access port 80 on the load balancer | 0.0.0.0/0 |
-| Repository | The name of the ECR repository | public.ecr.aws/a9t7y4w6/demo-chatgpt-streamlit:latest |
-| ChatGptApiKeyPath | ChatGPT API Key path in SSM Parameter Store | /openai/api_key |
-
-For example, to deploy the stack using the AWS CLI, you can use the following command with default values:
-
-```bash
-aws cloudformation create-stack \
-  --stack-name chatgpt-streamlit \
-  --template-body file://cf.yaml \
-  --capabilities CAPABILITY_IAM
+```
+pip install openai
 ```
 
-For example, to deploy the stack using the AWS CLI, you can use the following command with custom values:
+#### Step 1: Preparing data for fine tuning
 
-```bash
-aws cloudformation create-stack --stack-name chatgpt-streamlit \
-  --template-body file://cf.yaml \
-  --parameters ParameterKey=AllowedIP,ParameterValue=1.2.3.4/32 ParameterKey=Repository,ParameterValue=public.ecr.aws/a9t7y4w6/demo-chatgpt-streamlit:latest ParameterKey=ChatGptApiKeyPath,ParameterValue=/openai/api_key
+Open AI fine tuning api take additional training data in the following jsonl format:
+```
+[{'prompt' : '<user prompt text>', 'completion': '<ideal generated text>'}
+{'prompt' : '<user prompt text>', 'completion': '<ideal generated text>'}
+{'prompt' : '<user prompt text>', 'completion': '<ideal generated text>'}]
 ```
 
-This will create a new stack called `chatgpt-streamlit` using the `cf.yaml` template file and the `CAPABILITY_IAM` capability.
+In this repo, we included this great handy dataset retrieved from Kaggle -- <u>__Depression Data for Chatbot__</u> [https://www.kaggle.com/datasets/narendrageek/mental-health-faq-for-chatbot]. As per the author, the data can be used to train the bot to help people suffering from depression, which is exactly our use case!
 
-### Docker Image Build
+The data is stored in .yml format. The following python snippet is used to convert the raw data to Open AI desired format -- jsonl:
 
-To build the Docker image for this project, use the `Dockerfile` in the `./app` directory. You can do this using the `docker build` command.
+```
+import json
+import yaml
 
-For example, to build the image using the `Dockerfile` in the current directory, you can use the following command:
+# load the raw data
+with open('depression.yml', 'r') as file:
+    data = yaml.safe_load(file)
 
-```bash
-docker build -t chatgpt-streamlit .
+# Extract the conversations
+convos = data['conversations']
+
+# Create prompt completion pairs
+output = []
+
+for convo in convos:
+  completion = ''
+  for i, dialog in enumerate(convo):
+    if i == 0:
+      prompt = dialog
+      # p_encode = prompt.encode("ascii", "ignore")
+      # prompt = p_encode.decode()
+      prompt = prompt.replace("\xa0", " ")
+      # print('prompt:',prompt)
+    else:
+      completion += " " + dialog
+      # c_encode = completion.encode("ascii", "ignore")
+      # completion = c_encode.decode()
+      completion = completion.replace("\xa0", " ")
+  completion = completion.strip()
+  line = {'prompt': prompt, 'completion': completion}
+  # print(line)
+  output.append(line)
+
+  print(output) /* [{'prompt': 'What Is Depression?', 'completion': 'Depression is a common and serious medical... */
+
+# store the output in file named 'depression-d.jsonl'
+with open('depression-d.jsonl', 'w') as outfile:
+      for i in output:
+          json.dump(i, outfile)
+          outfile.write('\n')
+
 ```
 
-This will build the image and tag it with the name `chatgpt-streamlit`.
+#### Step 2: Configuring data with Open AI api
 
-### Docker Container Run
+The data preparation is not done yet. The Open AI api comes with the 'prepare_data' module to ensure the data feeding to GPT model matches their develoment team requirement. We process the prompt-completion pair data again using the module:
 
-```bash
-docker run -p 8501:8501 -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-  -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-  -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
-  -e AWS_DEFAULT_REGION="us-east-1" \
-  public.ecr.aws/a9t7y4w6/demo-chatgpt-streamlit:latest
+```
+!openai tools fine_tunes.prepare_data -f 'depression-d.jsonl'
 ```
 
-## Usage
+It will return a file titled 'depression-d_prepared.jsonl' that conforms with fine tuning requirements.
 
-The Streamlit application is deployed in an AWS ECS cluster and is available through a web browser using the URL of the load balancer. To access the app, simply navigate to the URL in a web browser.
+#### Step 3: Fine tuning
 
-## Support
+Finally, we are ready to fine tune GPT-3 model for our purpose. 
 
-If you have any questions or encounter any issues while using the project, please don't hesitate to reach out. You can find contact information in the [CONTRIBUTING](#contributing) section below.
+```
+!set OPENAI_API_KEY=<YOUR-API-KEY>
+!openai api fine_tunes.create -t "depression-d_prepared.jsonl" -m davinci 
+!openai api fine_tunes.follow -i ft-LKwrAVIKq6iFztZ6qffMbMpP
+```
 
-## Contributing
+'fine_tunes.follow' api is used to get the fine tune job status on Open AI platform. When it is done, it will return the fine tuned model identifier and we can converse with it using 'completion.create' api.
 
-We welcome contributions to this project! If you would like to contribute, please follow these guidelines:
+Note that **davinci** is one of the gpt-3 base models (4 in total: Ada, Baggage, Currie, Davinvi). These base models are differentiated by speed and level of sophistication, with Ada being the fastest and Davinci being most sophisticated.
 
-- Create an issue to discuss the change you would like to make.
-- Once the change has been discussed and approved, you can submit a pull request.
-- All pull requests should include tests to ensure that the code is working as intended.
-- Once the pull request has been reviewed and accepted, it will be merged into the main branch.
+### Hosting the model with streamlit web app
 
-Thank you for your interest in contributing to the project!
+#### Step 0: Install and create a virtual environment for the webapp with required dependencies
+
+Streamlit is an open-source Python library that makes it easy to create and share beautiful, custom web apps for machine learning and data science. It is recommended to host any streamlit based app using virtualenv to prevent dependencies crash between python modules.
+
+Install virtualenv with pip and create a virtual env called 'ChatBotApp'
+```
+pip install virtualenv
+python3 -m venv ChatBotApp
+
+source ChatBotApp/bin/activate # use the virtualenv
+
+pip install streamlit
+pip install streamlit_chat
+pip install openai
+```
+
+#### Step 1: Kick start the stream lit app
+
+All the code for the app is written in the file app/chatbot.py. For those who are interested, you can refer to the file for more details.
+
+One thing I would like to highlight is the part where the app integrates with OpenAI.
+```
+def generate_response(query: str):
+    prompt = "The following is a conversation with a therapist and a user." \
+                " The therapist is JOY, who uses compassionate listening to have helpful and meaningful conversations with users. "\
+                "JOY is empathic and friendly. JOY's objective is to make the user feel better by feeling heard. "\
+                "With each response, JOY offers follow-up questions to encourage openness and tries to continue the conversation in a natural way. \n\n"\
+                "JOY-> Hello, I am your personal mental health assistant. What's on your mind today?\nUser->"+ query + "JOY->"
+
+    completions = openai.Completion.create(model=gpt_model, 
+                                    prompt=prompt,
+                                    temperature = 0.89,
+                                    max_tokens=162,
+                                    top_p = 1,
+                                    frequency_penalty = 0,
+                                    presence_penalty=0.6,
+                                    stop=["\n"])
+    
+    message = completions["choices"][0]["text"]
+    return message
+```
+
+The function is triggered when a user input a text stored as query in the program. To make the model response sounds like a psychologist, we provide the context and embed user's query in the prompt. Then the engineered prompt is passed to GPT model hosted on Open AI through the api with some specified parameters, and the response is returned.
+
+Open AI api key and the model identifer are required to make this app run. Remember to input those info in the chatbot.py file. Kick start the app with the following snippet
+```
+streamlit run chatbot.py
+```
+
+The webapp will be host at <u>**localhost:8501**</u>. Go to the address via any browser and you can interact with the fine tuned chatbot.
