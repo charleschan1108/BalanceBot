@@ -3,8 +3,8 @@ import streamlit as st
 from streamlit_chat import message
 import os
 
-openai.api_key = os.environ.get("OPENAI_API_KEY") #st.secrets["openaiKey"]
-gpt_model = os.environ.get("MODEL")
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+gpt_model = st.secrets["MODEL"]
 
 def generate_response(query: str):
     prompt = "The following is a conversation with a therapist and a user." \
