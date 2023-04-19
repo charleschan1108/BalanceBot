@@ -1,0 +1,21 @@
+credentials:
+  usernames:
+    sonal:
+      email: sdidwani@andrew.cmu.edu
+      name: Sonal Didwania
+      password: abc # To be replaced with hashed password
+    arya:
+      email: amsingh@cmu.edu
+      name: Arya Mihir Singh
+      password: def # To be replaced with hashed password
+    charles:
+      email: chunyiuc@andrew.cmu.edu
+      name: Charles Chan
+      password: ghi
+cookie:
+  expiry_days: 30
+  key: random_signature_key # Must be string
+  name: random_cookie_name
+preauthorized:
+  emails:
+  - chunyiuc@andrew.cmu.edu
