@@ -3,7 +3,7 @@ import streamlit as st
 from streamlit_chat import message
 import os
 
-openai.api_key = os.environ.get("OPENAI_API_KEY") #st.secrets["OPENAI_API_KEY"]
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 gpt_model = "text-davinci-003" #st.secrets["MODEL"]
 
 def contextualize():
