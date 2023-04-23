@@ -31,10 +31,11 @@ def check_usr_email_and_retrieve_user_info(email: str, password: str) -> dict:
     """
     Authenticates the username and password.
     """
+    print(os.getcwd())
     dirname = os.path.dirname(__file__)
     db_path = os.path.join("..", dirname, "db.csv")
     authorized_user_data = pd.read_csv(db_path)
-    print(os.getcwd())
+    
 
     for _, registered_user in authorized_user_data.iterrows():
         if registered_user['email'] == email:
