@@ -20,9 +20,9 @@ LOGGED_IN = __login__obj.build_login_ui()
 
 def contextualize(username: str, occupation: str, stressor: str, gender: str, goal: str) -> str:
     # Prompt engineering
-    prompt = f"Summary: The user, {username}, is a {occupation} {gender}, {goal}. You are Joy, a psychologist, trying to help {username} manage stress." \
+    prompt = f"Summary: The user, {username}, is a {occupation} {gender}, {goal}. You are Joy, {username}'s well-being instructor, trying to help {username} manage stress." \
                     f" Specific information: {username}'s stressor is {stressor}"\
-                    f"\nIntroduce yourself as a professional psychologist and see how you can help {username}" + "\n\nAI:" 
+                    f"\nIntroduce yourself as a professional well-being instructor and see how you can help {username}" + "\n\nAI:" 
     completions = openai.Completion.create(model=gpt_model, 
                                         prompt=prompt,
                                         temperature = 0.89,
