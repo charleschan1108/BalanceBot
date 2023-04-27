@@ -55,7 +55,7 @@ if LOGGED_IN == True:
     user_cache = st.session_state["__user_cache__"]
 
     #Creating the chatbot interface
-    st.title("chatBot : Streamlit + openAI")
+    st.title("BalanceBot")
 
     # Storing the chat
     if 'generated' not in st.session_state:
@@ -81,7 +81,7 @@ if LOGGED_IN == True:
     # We will get the user's input by calling the get_text function
     def get_text():
         # input_text = st.text_input("You: ","Hello, how are you?", key="input")
-        input_text = st.text_input("Talk to our virtual psychologist Joy.", disabled=False, placeholder="What's on your mind?")
+        input_text = st.text_input("Talk to our well-being instructor Joy.", disabled=False, placeholder="What's on your mind?")
         return input_text
 
     user_input = get_text()
